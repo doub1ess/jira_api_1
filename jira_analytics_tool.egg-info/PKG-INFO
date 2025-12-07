@@ -1,0 +1,9 @@
+Metadata-Version: 2.4
+Name: jira-analytics-tool
+Version: 1.0.0
+Author: Stepan_S
+Requires-Dist: requests>=2.25.0
+Requires-Dist: matplotlib>=3.5.0
+Requires-Dist: numpy>=1.21.0
+Dynamic: author
+Dynamic: requires-dist

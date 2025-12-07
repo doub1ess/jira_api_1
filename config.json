@@ -1,0 +1,6 @@
+{
+    "jira_url": "https://issues.apache.org/jira",
+    "default_project": "KAFKA", 
+    "max_results": 500,
+    "timeout": 30
+}

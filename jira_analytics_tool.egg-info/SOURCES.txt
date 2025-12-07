@@ -1,0 +1,9 @@
+README.md
+jira_analyzer.py
+setup.py
+jira_analytics_tool.egg-info/PKG-INFO
+jira_analytics_tool.egg-info/SOURCES.txt
+jira_analytics_tool.egg-info/dependency_links.txt
+jira_analytics_tool.egg-info/entry_points.txt
+jira_analytics_tool.egg-info/requires.txt
+jira_analytics_tool.egg-info/top_level.txt
