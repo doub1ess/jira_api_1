@@ -4,10 +4,26 @@ from datetime import datetime
 from collections import defaultdict
 import requests
 import numpy as np
+import json
 
-JIRA_URL = "https://issues.apache.org/jira"
-PROJECT = "KAFKA"
+# JIRA_URL = "https://issues.apache.org/jira"
+# PROJECT = "KAFKA"
+try:
+    with open('config.json', 'r') as f:
+        config = json.load(f)
+        
+        # Берем значения из файла, если их нет - используем дефолтные
+        JIRA_URL = config.get("jira_url", "https://issues.apache.org/jira")
+        PROJECT = config.get("default_project", "KAFKA")
+        MAX_RESULTS = config.get("max_results", 50)  
+        TIMEOUT = config.get("timeout", 30)           
 
+except FileNotFoundError:
+    print("Внимание: Файл config.json не найден! Используются настройки по умолчанию.")
+    JIRA_URL = "https://issues.apache.org/jira"
+    PROJECT = "KAFKA"
+    MAX_RESULTS = 50
+    TIMEOUT = 30
 # def get_jira_issues():
 #     url = f"{JIRA_URL}/rest/api/2/search"
 #     params = {
@@ -28,7 +44,7 @@ def get_jira_issues():
     print("Запрос 50 задач Closed...")
     params_closed = {
         "jql": f"project={PROJECT} AND status = Closed",
-        "maxResults": 50,
+        "maxResults": MAX_RESULTS,
         "fields": "key,created,resolutiondate,status,reporter,assignee,priority,timespent,summary"
     }
     
@@ -36,7 +52,7 @@ def get_jira_issues():
     print("Запрос 50 задач Resolved...")
     params_resolved = {
         "jql": f"project={PROJECT} AND status = Resolved",
-        "maxResults": 50,
+        "maxResults": MAX_RESULTS,
         "fields": "key,created,resolutiondate,status,reporter,assignee,priority,timespent,summary"
     }
     
@@ -44,7 +60,7 @@ def get_jira_issues():
     
     # Выполняем 1-й запрос
     try:
-        resp1 = requests.get(f"{JIRA_URL}/rest/api/2/search", params=params_closed, timeout=15)
+        resp1 = requests.get(f"{JIRA_URL}/rest/api/2/search", params=params_closed, timeout=TIMEOUT)
         data1 = resp1.json()
         issues.extend(data1.get("issues", []))
     except Exception as e:
@@ -52,7 +68,7 @@ def get_jira_issues():
 
     # Выполняем 2-й запрос
     try:
-        resp2 = requests.get(f"{JIRA_URL}/rest/api/2/search", params=params_resolved, timeout=15)
+        resp2 = requests.get(f"{JIRA_URL}/rest/api/2/search", params=params_resolved, timeout=TIMEOUT)
         data2 = resp2.json()
         issues.extend(data2.get("issues", []))
     except Exception as e:
