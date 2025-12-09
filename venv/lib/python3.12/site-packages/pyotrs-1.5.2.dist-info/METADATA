@@ -1,0 +1,439 @@
+Metadata-Version: 2.1
+Name: pyotrs
+Version: 1.5.2
+Summary: Python wrapper for OTRS (using REST API)
+Home-page: https://gitlab.com/rhab/PyOTRS
+License: MIT
+Author: Robert Habermann
+Author-email: mail@rhab.de
+Maintainer: Robert Habermann
+Maintainer-email: mail@rhab.de
+Requires-Python: >=3.8.1,<3.14
+Classifier: Development Status :: 4 - Beta
+Classifier: Environment :: Console
+Classifier: Environment :: Web Environment
+Classifier: Framework :: Pytest
+Classifier: Framework :: Sphinx
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: System Administrators
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: POSIX :: Linux
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Topic :: Documentation :: Sphinx
+Provides-Extra: cli
+Requires-Dist: click (>=7.0) ; extra == "cli"
+Requires-Dist: colorama (>=0.4.1) ; extra == "cli"
+Requires-Dist: deprecation (>=2.1.0,<3.0.0)
+Requires-Dist: requests (>=2.32.4)
+Project-URL: Repository, https://gitlab.com/rhab/PyOTRS
+Description-Content-Type: text/x-rst
+
+Overview
+========
+
+|VersionBadge| |BuildStatus| |CoverageReport| |DocsBuildStatus| |LicenseBadge| |PythonVersions|
+
+
+.. |VersionBadge| image:: https://badge.fury.io/py/PyOTRS.svg
+    :target: https://badge.fury.io/py/PyOTRS
+    :alt: |version|
+
+.. |BuildStatus| image:: https://gitlab.com/rhab/PyOTRS/badges/main/pipeline.svg
+    :target: https://gitlab.com/rhab/PyOTRS/commits/main
+    :alt: Build Status
+
+.. |CoverageReport| image:: https://gitlab.com/rhab/PyOTRS/badges/main/coverage.svg
+    :target: https://gitlab.com/rhab/PyOTRS/commits/main
+    :alt: Coverage Report
+
+.. |DocsBuildStatus| image:: https://readthedocs.org/projects/pyotrs/badge/?version=stable
+    :target: https://pyotrs.readthedocs.org/en/stable/index.html
+    :alt: Docs Build Status
+
+.. |LicenseBadge| image:: https://img.shields.io/badge/license-MIT-blue.svg
+    :target: https://gitlab.com/rhab/PyOTRS/-/blob/main/LICENSE
+    :alt: MIT licensed
+
+.. |PythonVersions| image:: https://img.shields.io/badge/python-3.7%2C%203.8%2C%203.9%2C%203.10%2C%203.11%2C%203.12-blue.svg
+    :alt: python: 3.8, 3.9, 3.10, 3.11, 3.12
+
+
+PyOTRS is a Python wrapper for accessing `OTRS <https://www.otrs.com/>`_ (Version 6, 7, 8, 2023.1.1, 2024.1.2) using the
+(GenericInterface) REST API.
+
+Warning
+=======
+
+    Please upgrade PyOTRS to at least version 0.10.0 (recommended version is at least 1.0.1) if you
+    are using OTRS 6.0.27, 7.0.16 or newer. See `issue 27 <https://gitlab.com/rhab/PyOTRS/-/issues/27>`_
+    and `issue 29 <https://gitlab.com/rhab/PyOTRS/-/issues/29>`_ for more details.
+
+    OTRS has introduced a new API in version 8 and with this also changed the API endpoint from
+    "Session::SessionCreate" to "AccessToken::Create". PyOTRS attempts to use the new API and will
+    fallback to the old way ("legacy") if the attempt fails.
+
+
+Features
+========
+
+Access an OTRS instance to::
+
+    * create a new Ticket
+    * get the data of a specific Ticket
+    * search for Tickets
+    * update existing Tickets
+    * access as a "Customer User"
+
+Some of the most notable methods provided are::
+
+    * Client.session_create (Use credentials to "log in")
+    * Client.ticket_create
+    * Client.ticket_get_by_list  (takes a list)
+    * Client.ticket_get_by_id  (takes an int)
+    * Client.ticket_search
+    * Client.ticket_update
+
+More details can be found `here <pyotrs.html>`_
+
+Installation
+============
+
+OTRS Prerequisite
+-----------------
+
+You have to enable the **webservices** in your OTRS instance.  It is recommended to use the
+provided `template <https://gitlab.com/rhab/PyOTRS/raw/main/webservices_templates/GenericTicketConnectorREST.yml>`_.
+This YAML configuration template includes the **Route: /TicketList** and **SessionGet: /Session/:SessionID** endpoint which both are **required for PyOTRS** but which are not included in the default OTRS webservice setup.
+
+Dependencies
+------------
+
+*Dependencies are installed automatically*
+
+pip::
+
+    - python-requests
+
+
+There also is a (completely optional and rudimentary) *interactive* CLI which requires `click`. This
+dependency can be installed by calling `pip install PyOTRS[cli]`.
+
+Install
+-------
+
+install::
+
+    pip install PyOTRS
+
+**or** consider using a virtual environment::
+
+    virtualenv venv
+    source venv/bin/activate
+    pip install PyOTRS
+
+Python Usage
+============
+
+Quickstart
+----------
+
+Get Ticket with TicketID 1 from OTRS over the REST API::
+
+    from pyotrs import Client
+    client = Client("https://otrs.example.com", "root@localhost", "password")
+    client.session_create()
+    client.ticket_get_by_id(1)
+
+
+The usage of ``Client.session_restore_or_create`` is **recommended**. It uses a temporary file
+on the hard drive to store the Session ID (just like cookies in a browser) and avoids sending
+the username+password (and therefore creating a new session) on every API call::
+
+    from pyotrs import Client
+    client = Client("https://otrs.example.com", "root@localhost", "password")
+    client.session_restore_or_create()
+    client.ticket_get_by_id(1)
+
+Method ``Client.session_restore_or_set_up_new`` is **deprecated** as of v0.10 and will be removed in v2.0.
+
+More Examples
+-------------
+
+- instantiate a ``Client`` object called **client**
+- create a session ("login") on **client**
+- get the ``Ticket`` with ID 1
+
+>>> from pyotrs import Article, Client, DynamicField, Ticket
+>>> client = Client("http://otrs.example.com", "root@localhost", "password")
+>>> client.session_create()
+True
+
+>>> my_ticket = client.ticket_get_by_id(1)
+>>> my_ticket
+<Ticket: 1>
+
+>>> my_ticket.field_get("TicketNumber")
+u'2010080210123456'
+>>> my_ticket.field_get("Title")
+u'Welcome to OTRS!'
+>>> my_ticket.to_dct()  # Show complete ticket
+
+
+- access as a CustomerUser
+
+>>> from pyotrs import Client
+>>> client = Client("http://otrs.example.com", "user@customer.example.com", "password", customer_user=True)
+>>> client.session_create()
+True
+
+
+- add an ``Article`` to ``Ticket`` with ID 1
+
+>>> my_article = Article({"Subject": "Subj", "Body": "New Body"})
+>>> client.ticket_update(1, article=my_article)
+{u'ArticleID': u'3',
+ u'TicketID': u'1',
+ u'TicketNumber': u'2010080210123456'}
+
+
+- get Articles and Attachments
+
+>>> client.ticket_get_by_id(1, articles=1, attachments=1)
+>>> my_ticket = client.result[0]
+
+>>> my_ticket.articles
+[<ArticleID: 3>, <ArticleID: 4>
+
+>>> my_ticket.dynamic_fields
+[<DynamicField: ProcessManagementActivityID: None>, <DynamicField: ProcessManagementProcessID: None>]
+
+
+Get Tickets
+-----------
+
+>>> client.ticket_get_by_id(1, articles=True, attachments=True, dynamic_fields=True)
+<Ticket: 1>
+
+>>> client.ticket_get_by_list([1, 3, 4], dynamic_fields=False)
+[<Ticket: 1>, <Ticket: 3>, <Ticket: 4>]
+
+
+Update Tickets
+--------------
+
+>>> client.ticket_update(1, Title="New Title")
+{u'TicketID': u'1', u'TicketNumber': u'2010080210123456'}
+
+>>> client.ticket_update(1, Queue="New Queue")
+{u'TicketID': u'1', u'TicketNumber': u'2010080210123456'}
+
+>>> client.ticket_update(1, Queue="New Queue", State="closed")
+{u'TicketID': u'1', u'TicketNumber': u'2010080210123456'}
+
+>>> my_article = Article({"Subject": "Subj", "Body": "New Body"})
+>>> client.ticket_update(1, article=my_article)
+{u'ArticleID': u'3',
+ u'TicketID': u'1',
+ u'TicketNumber': u'2010080210123456'}
+
+
+>>> att = Attachment.create_from_file("./test_data/asd.txt")
+>>> client.ticket_update(ticket_id=1, article=my_article, attachments=[att])
+{'ArticleID': '7927', 'TicketID': '1', 'TicketNumber': '2010080210123456'}
+
+>>> df = DynamicField("ExternalTicket", "1234")
+>>> client.ticket_update(1, dynamic_fields=[df])
+{u'TicketID': u'1', u'TicketNumber': u'2010080210123456'}
+
+
+Create Tickets
+--------------
+
+OTRS requires that new Tickets have several fields filled with valid values and that an
+Article is present for the new Ticket.
+
+>>> new_ticket = Ticket.create_basic(Title="This is the Title",
+                                     Queue="Raw",
+                                     State=u"new",
+                                     Priority=u"3 normal",
+                                     CustomerUser="root@localhost")
+>>> first_article = Article({"Subject": "Subj", "Body": "New Body"})
+>>> client.ticket_create(new_ticket, first_article)
+{u'ArticleID': u'9', u'TicketID': u'7', u'TicketNumber': u'2016110528000013'}
+
+
+Article body with HTML
+----------------------
+
+PyOTRS defaults to using the MIME type "text/plain". By specifying a different type it is possible to e.g. add a HTML body.
+
+>>> first_article = Article({"Subject": "Subj",
+                             "Body": "<html><body><h1>This is a header</h1>" \
+                                     "<a href='https://pyotrs.readthedocs.io/'>Link to PyOTRS Docs</a></body></html>",
+                             "MimeType": "text/html"})
+>>> client.ticket_update(10, first_article)
+{u'ArticleID': u'29', u'TicketID': u'10', u'TicketNumber': u'2017052328000034'}
+
+
+Search for Tickets
+------------------
+
+- get list of Tickets created before a date (e.g. Jan 01, 2011)
+
+>>> from datetime import datetime
+>>> client.ticket_search(TicketCreateTimeOlderDate=datetime(2011, 1, 1))
+[u'1']
+
+
+- get list of Tickets created less than a certain time ago (e.g. younger than 1 week)
+
+>>> from datetime import datetime
+>>> from datetime import timedelta
+>>> client.ticket_search(TicketCreateTimeNewerDate=datetime.utcnow() - timedelta(days=7))
+[u'66', u'65', u'64', u'63']
+
+
+- show tickets with either 'open' or 'new' state in Queue 12 created over a week ago
+
+>>> from datetime import datetime
+>>> from datetime import timedelta
+>>> week = datetime.utcnow() - timedelta(days=7)
+>>> client.ticket_search(TicketCreateTimeOlderDate=week, States=['open', 'new'], QueueIDs=[12])
+
+- empty result (search worked, but there are no matching tickets)
+
+>>> client.ticket_search(Title="no such ticket")
+[]
+
+- search for content of DynamicFields
+
+>>> df = DynamicField("ExternalTicket", search_patterns=["1234"])
+>>> client.ticket_search(dynamic_fields=[df])
+[u'2']
+
+>>> df = DynamicField("ExternalTicket", search_patterns=["123*"], search_operator="Like")
+>>> client.ticket_search([df])
+[u'2']
+
+
+
+Tips
+----
+
+**If needed** the *insecure plattform warnings* can be disabled::
+
+    # turn off platform insecurity warnings from urllib3
+    from requests.packages.urllib3 import disable_warnings
+    disable_warnings()  # TODO 2016-04-23 (RH) verify this
+
+PyOTRS Shell CLI
+================
+
+The PyOTRS Shell CLI is a kind of "proof-of-concept" for the PyOTRS wrapper library.
+
+**Attention: PyOTRS can only retrieve Ticket data at the moment!**
+
+Usage
+-----
+
+Get a Ticket::
+
+    pyotrs get -b https://otrs.example.com/ -u root@localhost -p password -t 1
+    Starting PyOTRS CLI
+    No config file found at: /home/user/.pyotrs
+    Connecting to https://otrs.example.com/ as user..
+    Ticket:         Welcome to OTRS!
+    Queue:          Raw
+    State:          closed successful
+    Priority:       3 normal
+
+Get usage information::
+
+    $: pyotrs -h
+    Usage: PyOTRS [OPTIONS] COMMAND [ARGS]...
+
+    Options:
+      --version      Show the version and exit.
+      --config PATH  Config File
+      -h, --help     Show this message and exit.
+
+    Commands:
+      get  PyOTRS get command
+
+    $:pyotrs get -h
+    Starting PyOTRS CLI
+    No config file found at: /home/user/.pyotrs
+    Usage: PyOTRS get [OPTIONS]
+
+      PyOTRS get command
+
+    Options:
+      -b, --baseurl TEXT              Base URL
+      -u, --username TEXT             Username
+      -p, --password TEXT             Password
+      -t, --ticket-id INTEGER         Ticket ID
+      --store-path TEXT               where to store Attachments (default:
+                                      /tmp/pyotrs_<random_str>
+      --store-attachments             store Article Attachments to
+                                      /tmp/<ticket_id>
+      --attachments                   include Article Attachments
+      --articles                      include Articles
+      --https-verify / --no-https-verify
+                                      HTTPS(SSL/TLS) Certificate validation
+                                      (default: enabled)
+      --ca-cert-bundle TEXT           CA CERT Bundle (Path)
+      -h, --help                      Show this message and exit.
+
+
+Get a Ticket "*interactively*\"::
+
+    $: pyotrs get
+    Starting PyOTRS CLI
+    No config file found at: /home/user/.pyotrs
+    Baseurl: http://otrs.example.com
+    Username: user
+    Password:
+    Ticket id: 1
+
+    Connecting to https://otrs.example.com as user..
+
+    Ticket:         Welcome to OTRS!
+    Queue:          Raw
+    State:          closed successful
+    Priority:       3 normal
+
+    Full Ticket:
+    {u'Ticket': {u'TypeID': 1  [...]
+
+
+
+Provide Config
+--------------
+
+There are four ways to provide config values::
+
+    1. interactively when prompted
+    2. as commandline arguments when calling (checkout -h/--help)
+    3. as settings in the environment
+    4. in a config file (default location: ~/.pyotrs)
+
+Both the config file and the environment use the same variable names::
+
+    PYOTRS_BASEURL=http://otrs.example.com
+    PYOTRS_USERNAME=root@localhost
+    PYOTRS_PASSWORD=otrs_password
+    PYOTRS_HTTPS_VERIFY=True
+    PYOTRS_CA_CERT_BUNDLE=
+
+
+License
+=======
+
+`MIT License <http://en.wikipedia.org/wiki/MIT_License>`__
+

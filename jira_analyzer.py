@@ -6,8 +6,7 @@ import requests
 import numpy as np
 import json
 
-# JIRA_URL = "https://issues.apache.org/jira"
-# PROJECT = "KAFKA"
+
 try:
     with open('config.json', 'r') as f:
         config = json.load(f)
@@ -19,62 +18,48 @@ try:
         TIMEOUT = config.get("timeout", 30)           
 
 except FileNotFoundError:
-    print("Внимание: Файл config.json не найден! Используются настройки по умолчанию.")
+    print("Файл config.json не найден.")
     JIRA_URL = "https://issues.apache.org/jira"
     PROJECT = "KAFKA"
     MAX_RESULTS = 50
     TIMEOUT = 30
-# def get_jira_issues():
-#     url = f"{JIRA_URL}/rest/api/2/search"
-#     params = {
-#         "jql": f"project={PROJECT} AND status in (Closed, Resolved)",
-#         "maxResults": 100,
-#         "fields": "key,created,resolutiondate,status,reporter,assignee,priority,timespent,summary"
-#     }
-    
-#     try:
-#         response = requests.get(url, params=params, timeout=15)
-#         data = response.json()
-#         return data.get("issues", [])
-#     except:
-#         return []
+
 
 def get_jira_issues():
-    # 1. Получаем 50 задач "Closed"
-    print("Запрос 50 задач Closed...")
-    params_closed = {
-        "jql": f"project={PROJECT} AND status = Closed",
-        "maxResults": MAX_RESULTS,
-        "fields": "key,created,resolutiondate,status,reporter,assignee,priority,timespent,summary"
-    }
-    
-    # 2. Получаем 50 задач "Resolved"
-    print("Запрос 50 задач Resolved...")
-    params_resolved = {
-        "jql": f"project={PROJECT} AND status = Resolved",
-        "maxResults": MAX_RESULTS,
-        "fields": "key,created,resolutiondate,status,reporter,assignee,priority,timespent,summary"
-    }
-    
     issues = []
+    start_at = 0
     
-    # Выполняем 1-й запрос
-    try:
-        resp1 = requests.get(f"{JIRA_URL}/rest/api/2/search", params=params_closed, timeout=TIMEOUT)
-        data1 = resp1.json()
-        issues.extend(data1.get("issues", []))
-    except Exception as e:
-        print("Ошибка при получении Closed:", e)
-
-    # Выполняем 2-й запрос
-    try:
-        resp2 = requests.get(f"{JIRA_URL}/rest/api/2/search", params=params_resolved, timeout=TIMEOUT)
-        data2 = resp2.json()
-        issues.extend(data2.get("issues", []))
-    except Exception as e:
-        print("Ошибка при получении Resolved:", e)
-
+    while True:
+        params = {
+            "jql": f"project={PROJECT} AND status in (Closed, Resolved)",
+            "startAt": start_at,
+            "maxResults": MAX_RESULTS,
+            "fields": "key,created,resolutiondate,status,reporter,assignee,priority,timespent,summary"
+        }
+        
+        try:
+            resp = requests.get(f"{JIRA_URL}/rest/api/2/search", params=params, timeout=TIMEOUT)
+            data = resp.json()
+        except Exception as e:
+            print(f"Ошибка при запросе: {e}")
+            break
+        
+        page_issues = data.get("issues", [])
+        if not page_issues:
+            break
+        
+        issues.extend(page_issues)
+        print(f"Получено {len(page_issues)} задач, всего собрано: {len(issues)}")
+        
+        if len(page_issues) < MAX_RESULTS:
+            break
+        
+        start_at += len(page_issues)
+    
+    print(f"Всего загружено задач: {len(issues)}")
     return issues
+
+
 
 
 def calculate_time(created_str, resolved_str):
@@ -118,33 +103,61 @@ def task_2(issues):
         plt.grid(True, alpha=0.3)
         plt.show()
 
+
 def task_3(issues):
-    """График заведенных и закрытых задач"""
+    """График заведенных и закрытых задач за последний год"""
+    from datetime import datetime, timedelta
+    
     created_dates = defaultdict(int)
     closed_dates = defaultdict(int)
-
+    
+    one_year_ago = datetime.now().date() - timedelta(days=365)
+    
     for issue in issues:
         created_date = datetime.strptime(issue['fields']['created'].split('.')[0], '%Y-%m-%dT%H:%M:%S').date()
-        created_dates[created_date] += 1
+        if created_date >= one_year_ago:
+            created_dates[created_date] += 1
+        
         if issue['fields'].get('resolutiondate'):
             closed_date = datetime.strptime(issue['fields']['resolutiondate'].split('.')[0], '%Y-%m-%dT%H:%M:%S').date()
-            closed_dates[closed_date] += 1
-
+            if closed_date >= one_year_ago:
+                closed_dates[closed_date] += 1
+    
     dates = sorted(set(created_dates.keys()) | set(closed_dates.keys()))
     created_counts = [created_dates.get(date, 0) for date in dates]
     closed_counts = [closed_dates.get(date, 0) for date in dates]
-
-    plt.figure(figsize=(12, 6))
-    plt.plot(dates, created_counts, label='Создано', marker='o')
-    plt.plot(dates, closed_counts, label='Закрыто', marker='s')
-    plt.xlabel('Дата')
-    plt.ylabel('Количество задач')
-    plt.title('График заведенных и закрытых задач')
-    plt.legend()
-    plt.grid(True, alpha=0.3)
-    plt.xticks(rotation=45)
+    
+    created_cumsum = np.cumsum(created_counts)
+    closed_cumsum = np.cumsum(closed_counts)
+    
+    # Создаем 2 подграфика
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(14, 10))
+    
+    # График 1: За день
+    ax1.plot(dates, created_counts, label='Создано за день', marker='o', color='#2E86AB', linewidth=1.5)
+    ax1.plot(dates, closed_counts, label='Закрыто за день', marker='s', color='#F18F01', linewidth=1.5)
+    ax1.set_ylabel('Количество задач')
+    ax1.set_title('Задачи созданные и закрытые за день')
+    ax1.legend()
+    ax1.grid(True, alpha=0.3)
+    
+    # График 2: Накопительно
+    ax2.plot(dates, created_cumsum, label='Создано (накопительно)', color='#2E86AB', linewidth=2, linestyle='--')
+    ax2.plot(dates, closed_cumsum, label='Закрыто (накопительно)', color='#F18F01', linewidth=2, linestyle='--')
+    ax2.set_xlabel('Дата')
+    ax2.set_ylabel('Накопительное количество задач')
+    ax2.set_title('Накопительный итог задач')
+    ax2.legend()
+    ax2.grid(True, alpha=0.3)
+    
+    # Поворот подписей дат
+    for ax in [ax1, ax2]:
+        ax.tick_params(axis='x', rotation=45)
+    
     plt.tight_layout()
     plt.show()
+
+
 
 
 
@@ -158,7 +171,7 @@ def task_4(issues):
         if issue['fields'].get('reporter'):
             user_counts[issue['fields']['reporter'].get('displayName', 'Unknown')] += 1
     
-    top_users = sorted(user_counts.items(), key=lambda x: x[1], reverse=True)[:15]
+    top_users = sorted(user_counts.items(), key=lambda x: x[1], reverse=True)[:30]
     users, counts = zip(*top_users) if top_users else ([], [])
     
     plt.figure(figsize=(10, 6))
